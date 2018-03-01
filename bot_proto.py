@@ -11,6 +11,17 @@ import codecs
 
 INTERVAL = 0.5
 
+def get_notif_able():
+    f = codecs.open('data/notif_able.txt', 'r', encoding='utf-8')
+    notif_able = f.read()
+    return notif_able[1:]
+
+def get_notif_disable():
+    f = codecs.open('data/notif_disable.txt', 'r', encoding='utf-8')
+    notif_disable = f.read()
+    return notif_disable[1:]
+
+
 def get_menu_str():
     f = codecs.open('data/menu_str.txt', 'r', encoding='utf-8')
     menu_str = f.read()
@@ -108,15 +119,20 @@ class Telegram:
         self.offset = 0
         self.host = socket.getfqdn()
         self.Interval = INTERVAL
-        self.menu_text = get_menu_text()
+
         self.schedule_str = get_schedule_str()
         self.cards_str = get_cards_str()
         self.notification_str = get_notification_str()
         self.feedback_str = get_feedback_str()
         self.contacts_str = get_contacts_str()
         self.menu_str = get_menu_str()
+        self.notification_req_str = "В этом разделе Вы можете настроить уведомления."
         self.contacts_text = get_contacts_text()
         self.cards_text = get_cards_text()
+        self.menu_text = get_menu_text()
+
+        self.notif_able = get_notif_able()
+        self.notif_disable = get_notif_disable()
 
         if self.proxy:
             self.proxies = get_proxies(self.cfgtree)
@@ -188,13 +204,17 @@ class Telegram:
                 name = update['message']['chat']['first_name'].encode("utf-8")
             except:
                 name = update['message']['from']['first_name'].encode("utf-8")
-            parameters = ({'name':name, 'message_unicode':message_unicode, 'from_id':from_id, 'message': message, 'date': date})
+            parameters = ({'name': name,
+                           'message_unicode': message_unicode,
+                           'from_id': from_id,
+                           'message': message,
+                           'date': date})
             updates_list.append(parameters)
             #log_event('from %s (id%s): "%s" with author: %s; time:%s' % parameters)
         return updates_list
 
     def send_text(self, chat_id, text):
-        #log_event('Sending to %s: %s' % (chat_id, text))  # Logging
+        log_event('Sending to %s: %s' % (chat_id, text))  # Logging
         data = {'chat_id': chat_id, 'text': text}  # Request create
         if self.proxy:
             request = requests.post(self.URL + self.TOKEN + '/sendMessage', data=data,
@@ -223,20 +243,7 @@ class Telegram:
         if not request.status_code == 200:  # Check server status
             return False
         '''
-        Send text at second
-        '''
-        data = {'chat_id': chat_id, 'text': self.menu_text,'parse_mode':'HTML'}  # Request create
-        # if self.proxy:
-        #     request = requests.post(self.URL + self.TOKEN + '/sendMessage', data=data,
-        #                             proxies=self.proxies)  # HTTP request with proxy
-        # else:
-        #     request = requests.post(self.URL + self.TOKEN + '/sendMessage', data=data)  # HTTP request
-        #
-        # if not request.status_code == 200:  # Check server status
-        #     return False
-        # return request.json()['ok']  # Check API
-        '''
-        Send keyboard at third
+        Send text and keyboard at second
         '''
         keyboard = [[self.schedule_str], [self.cards_str], [self.notification_str], [self.feedback_str, self.contacts_str]]
 
@@ -283,6 +290,25 @@ class Telegram:
 
         # print request.json()
         if not request.status_code == 200:  # Check server status
+            log_event("ERROR: " + request.text)
+            return False
+        return request.json()['ok']  # Check API
+
+    def send_notification_request(self, chat_id):
+
+        keyboard = [[self.notif_able], [self.notif_disable], [self.menu_str]]
+        json_data = {'chat_id': chat_id, 'text': self.notification_req_str, 'parse_mode': 'HTML',
+                     "reply_markup": {"keyboard": keyboard, "one_time_keyboard": True, "resize_keyboard": True}}
+        if not self.proxy:  # no proxy
+            request = requests.post(self.URL + self.TOKEN + '/sendMessage', json=json_data)  # HTTP request
+
+        if self.proxy:
+            request = requests.post(self.URL + self.TOKEN + '/sendMessage', json=json_data,
+                                    proxies=self.proxies)  # HTTP request with proxy
+
+        # print request.json()
+        if not request.status_code == 200:  # Check server status
+            log_event("ERROR: " + request.text)
             return False
         return request.json()['ok']  # Check API
 

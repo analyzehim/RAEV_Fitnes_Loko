@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from bot_proto import *
+from db_proto import DB
 
 
 def check_updates():
@@ -19,12 +20,33 @@ def run_command(update):
     if 'from_id' in update:
         from_id = update['from_id']
 
-    message_unicode.encode('raw_unicode_escape')
+    notif_state = db.get_notification_state(from_id)
+    schedule_state = db.get_schedule_state(from_id)
+
+    if notif_state == 1:
+
+        if message_unicode == telebot.notif_able:
+            db.set_notification_state(from_id, 2)
+            telebot.send_notif_able_request(from_id, telebot.subscribes)
+
+        elif message_unicode == telebot.notif_disable:
+            db.set_notification_state(from_id, 3)
+            telebot.send_notif_disable_request(from_id, db.get_subscribe(from_id))
+
+        else:
+            db.set_notification_state(from_id, 0)
+            telebot.send_menu(from_id)
+
+
+
+    #print message_unicode.encode('raw_unicode_escape')
 
     if cmd == '/start':
         telebot.send_menu(from_id)
+        db.add_new_id(from_id)
 
     elif message_unicode == telebot.menu_str:
+        db.set_default_state()
         telebot.send_menu(from_id)
 
     elif message_unicode == telebot.cards_str:
@@ -33,6 +55,10 @@ def run_command(update):
     elif message_unicode == telebot.contacts_str:
         telebot.send_contacts(from_id)
 
+    elif message_unicode == telebot.notification_str:
+        telebot.send_notification_request(from_id)
+        db.set_notification_state(from_id, 1)
+
     else:
         log_event('No action')
 
@@ -40,6 +66,7 @@ def run_command(update):
 if __name__ == "__main__":
 
     telebot = Telegram()
+    db = DB()
     while True:
         try:
             check_updates()
@@ -49,33 +76,3 @@ if __name__ == "__main__":
             break
         except Exception, e:
             log_event(get_exception())
-
-    # while True:
-    #     keyboard1 = [[{'text': 'Button 1', 'url': 'http://www.yandex.ru/'}, {'text': 'Button 2', 'callback_data': 'data 2'}]]
-    #     keyboard2 = [
-    #         [{'text': 'Button 3', 'url': 'http://www.yandex.ru/'}, {'text': 'Button 4', 'callback_data': 'data 2'}]]
-    #     telebot.send_text_with_keyboard(telebot.admin_id, 'Options:', keyboard1)
-    #     time.sleep(5)
-    #     message_id = telebot.get_updates()
-    #     telebot.edit_keyboard(74102915, message_id, keyboard2)
-    #     time.sleep(10)
-    #
-    # # telebot.send_text_with_keyboard(telebot.admin_id, 'Options:', keyboard)
-    # # telebot.send_text_with_keyboard(telebot.admin_id, 'Options:', keyboard)
-    # #
-    # # while True:
-    #     print telebot.get_updates(editMessageReplyMarkup)
-    #     print "_____"
-    #     telebot.send_text(telebot.admin_id, "Run on {0}".format(telebot.host))
-    #     #telebot.send_text_with_keyboard(telebot.admin_id, 'Options:', [["breakfast", "lunch", "dinner"], ["cry", "sex", "tv-series"]])
-    #
-    #     time.sleep(5)
-    #
-    # # while True:
-    # #     try:
-    # #         time.sleep(telebot.Interval)
-    # #     except KeyboardInterrupt:
-    # #         print 'Interrupt by user..'
-    # #         break
-    # #     except Exception, e:
-    # #         log_event(get_exception())
