@@ -21,6 +21,10 @@ def get_contacts_text():
     contacts_text = f.read()
     return contacts_text
 
+def get_cards_text():
+    f = codecs.open('data/cards_text.txt', 'r', encoding='utf-8')
+    cards_text = f.read()
+    return cards_text
 
 def get_menu_text():
     #f = open("data/menu.txt","r")
@@ -111,7 +115,8 @@ class Telegram:
         self.feedback_str = get_feedback_str()
         self.contacts_str = get_contacts_str()
         self.menu_str = get_menu_str()
-        self.contacts_text  = get_contacts_text()
+        self.contacts_text = get_contacts_text()
+        self.cards_text = get_cards_text()
 
         if self.proxy:
             self.proxies = get_proxies(self.cfgtree)
@@ -265,6 +270,21 @@ class Telegram:
             return False
         return request.json()['ok']  # Check API
 
+    def send_cards(self, chat_id):
+        keyboard = [[self.menu_str]]
+        json_data = {'chat_id': chat_id, 'text': self.cards_text, 'parse_mode': 'HTML',
+                     "reply_markup": {"keyboard": keyboard, "one_time_keyboard": True, "resize_keyboard": True}}
+        if not self.proxy:  # no proxy
+            request = requests.post(self.URL + self.TOKEN + '/sendMessage', json=json_data)  # HTTP request
+
+        if self.proxy:
+            request = requests.post(self.URL + self.TOKEN + '/sendMessage', json=json_data,
+                                    proxies=self.proxies)  # HTTP request with proxy
+
+        # print request.json()
+        if not request.status_code == 200:  # Check server status
+            return False
+        return request.json()['ok']  # Check API
 
 def log_event(text):
     f = open('log.txt', 'a')

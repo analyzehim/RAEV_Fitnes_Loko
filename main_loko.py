@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 from bot_proto import *
-from db_proto import *
-from checks_parser import get_items_from_check
-import requests
 
 
 def check_updates():
@@ -29,6 +26,9 @@ def run_command(update):
 
     elif message_unicode == telebot.menu_str:
         telebot.send_menu(from_id)
+
+    elif message_unicode == telebot.cards_str:
+        telebot.send_cards(from_id)
 
     elif message_unicode == telebot.contacts_str:
         telebot.send_contacts(from_id)
