@@ -3,6 +3,32 @@ from bot_proto import *
 from db_proto import DB
 
 
+def schedule_handler(update, schedule_state):
+
+    if 'message_unicode' in update:
+        message_unicode = update['message_unicode']
+    if 'from_id' in update:
+        from_id = update['from_id']
+    if schedule_state == 1:
+        if 'callback_data' in update:
+            data = update['callback_data']
+            telebot.send_schedule(from_id, data)
+            db.set_schedule_state(from_id, 2)
+            #telebot.send_menu(from_id)
+
+    if schedule_state == 2:
+        if 'callback_data' in update:
+
+            data = update['callback_data']
+            if data.encode('utf-8') == telebot.schedule_req:
+                db.set_schedule_state(from_id, 1)
+                telebot.send_schedule_request(from_id, telebot.programs)
+            else:
+                db.set_schedule_state(from_id, 0)
+                telebot.send_menu(from_id)
+
+
+
 def notif_handler(update, notif_state):
     if 'message_unicode' in update:
         message_unicode = update['message_unicode']
@@ -79,6 +105,8 @@ def run_command(update):
     elif notif_state != 0:
         notif_handler(update, notif_state)
 
+    elif schedule_state != 0:
+        schedule_handler(update, schedule_state)
 
     #print message_unicode.encode('raw_unicode_escape')
     elif message_unicode == telebot.cards_str:
@@ -92,6 +120,10 @@ def run_command(update):
     elif message_unicode == telebot.notification_str:
         telebot.send_notification_request(from_id)
         db.set_notification_state(from_id, 1)
+
+    elif message_unicode == telebot.schedule_str:
+        telebot.send_schedule_request(from_id, telebot.programs)
+        db.set_schedule_state(from_id, 1)
 
     else:
         log_event('No action')

@@ -12,13 +12,29 @@ import codecs
 INTERVAL = 0.5
 
 
-def get_programs():
-    f = codecs.open('data/programs.txt', 'r')
-    ans = set()
-    for program in f:
-        ans.add(program)
-    f.close()
-    return ans
+def parse_program(programs):
+    mas = sorted(list(programs))
+    LINE_SIZE = 3
+    keyboard = []
+    keyboard.append( [{'text': mas[0], 'callback_data': mas[0]}] )
+    for elem in mas[1:]:
+        if len(keyboard[-1])!= LINE_SIZE:
+            keyboard[-1].append({'text': elem, 'callback_data': elem})
+        else:
+            keyboard.append([{'text': elem, 'callback_data': elem}])
+    return keyboard
+
+
+
+def get_schedule_dict():
+    f = codecs.open('data/programs.txt', 'r', encoding='utf-8')
+    schedule = f.read().split('!')
+    programs = schedule[1::2]
+    programs_time = schedule[2::2]
+    schedule_dict={}
+    for i in range(len(programs_time)):
+        schedule_dict[programs[i]] = programs_time[i]
+    return set(schedule_dict.keys()), schedule_dict
 
 def get_notif_able():
     f = codecs.open('data/notif_able.txt', 'r', encoding='utf-8')
@@ -128,7 +144,7 @@ class Telegram:
         self.offset = 0
         self.host = socket.getfqdn()
         self.Interval = INTERVAL
-        self.programs = get_programs()
+        self.programs, self.schedule_dict = get_schedule_dict()
 
         self.schedule_str = get_schedule_str()
         self.cards_str = get_cards_str()
@@ -139,6 +155,8 @@ class Telegram:
         self.notification_req_str = "В этом разделе Вы можете настроить уведомления."
         self.notification_able_str = "Выберите групповую программу на уведомления о которой Вы хотите подписаться:"
         self.notification_disable_str = "Выберите групповую программу от уведомлений которой Вы хотите отписаться:"
+        self.schedule_request_str = "Выберите групповую программу, расписание которой вы хотите посмотреть:"
+        self.schedule_req = "Посмотреть другие расписания"
         self.contacts_text = get_contacts_text()
         self.cards_text = get_cards_text()
         self.menu_text = get_menu_text()
@@ -329,11 +347,8 @@ class Telegram:
 
 
     def send_notif_able_request(self, chat_id, programs):
-        keyboard = []
-        for program in sorted(list(programs)):
-            keyboard.append([{'text':program, 'callback_data': program}])
+        keyboard = parse_program(programs)
 
-        #keyboard = [[{'text': '1', 'callback_data': 'data 1'}, {'text': '2', 'callback_data': 'data 2'}]]
         json_data = {"chat_id": chat_id, 'text': self.notification_able_str,
                      "reply_markup": {"inline_keyboard": keyboard, "one_time_keyboard": True, "resize_keyboard": True}}
         if not self.proxy:  # no proxy
@@ -348,9 +363,7 @@ class Telegram:
         return request.json()['ok']  # Check API
 
     def send_notif_disable_request(self, chat_id, programs):
-        keyboard = []
-        for program in sorted(list(programs)):
-            keyboard.append([{'text':program, 'callback_data': program}])
+        keyboard = parse_program(programs)
 
         #keyboard = [[{'text': '1', 'callback_data': 'data 1'}, {'text': '2', 'callback_data': 'data 2'}]]
         json_data = {"chat_id": chat_id, 'text': self.notification_disable_str,
@@ -372,6 +385,42 @@ class Telegram:
     def delete_program(self, from_id, data):
         self.send_text(from_id, " Вы отписались от {0}".format(data))
 
+    def send_schedule_request(self, chat_id, programs):
+        keyboard = parse_program(programs)
+        #keyboard = [[{'text': '1', 'callback_data': 'data 1'}, {'text': '2', 'callback_data': 'data 2'}]]
+        json_data = {"chat_id": chat_id, 'text': self.schedule_request_str,
+                     "reply_markup": {"inline_keyboard": keyboard, "one_time_keyboard": True, "resize_keyboard": True}}
+        if not self.proxy:  # no proxy
+            request = requests.post(self.URL + self.TOKEN + '/sendMessage', json=json_data)  # HTTP request
+
+        if self.proxy:
+            request = requests.post(self.URL + self.TOKEN + '/sendMessage', json=json_data,
+                                    proxies=self.proxies)  # HTTP request with proxy
+        if not request.status_code == 200:  # Check server status
+            log_event("ERROR: " + request.text)
+            return False
+        return request.json()['ok']  # Check API
+
+    def send_schedule(self, chat_id, data):
+        schedule = self.schedule_dict[data]
+        keyboard = [
+                    [{'text': self.schedule_req, 'callback_data': self.schedule_req}],
+                    [{'text': self.menu_str, 'callback_data': self.menu_str}]
+                    ]
+        json_data = {'chat_id': chat_id, 'text': schedule, 'parse_mode': 'HTML',
+                     "reply_markup": {"inline_keyboard": keyboard, "one_time_keyboard": True, "resize_keyboard": True}}
+        if not self.proxy:  # no proxy
+            request = requests.post(self.URL + self.TOKEN + '/sendMessage', json=json_data)  # HTTP request
+
+        if self.proxy:
+            request = requests.post(self.URL + self.TOKEN + '/sendMessage', json=json_data,
+                                    proxies=self.proxies)  # HTTP request with proxy
+
+        # print request.json()
+        if not request.status_code == 200:  # Check server status
+            log_event("ERROR: " + request.text)
+            return False
+        return request.json()['ok']  # Check API
 
 
 def log_event(text):
