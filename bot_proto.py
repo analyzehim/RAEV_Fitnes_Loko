@@ -11,6 +11,15 @@ import codecs
 
 INTERVAL = 0.5
 
+
+def get_programs():
+    f = codecs.open('data/programs.txt', 'r')
+    ans = set()
+    for program in f:
+        ans.add(program)
+    f.close()
+    return ans
+
 def get_notif_able():
     f = codecs.open('data/notif_able.txt', 'r', encoding='utf-8')
     notif_able = f.read()
@@ -119,6 +128,7 @@ class Telegram:
         self.offset = 0
         self.host = socket.getfqdn()
         self.Interval = INTERVAL
+        self.programs = get_programs()
 
         self.schedule_str = get_schedule_str()
         self.cards_str = get_cards_str()
@@ -127,6 +137,8 @@ class Telegram:
         self.contacts_str = get_contacts_str()
         self.menu_str = get_menu_str()
         self.notification_req_str = "В этом разделе Вы можете настроить уведомления."
+        self.notification_able_str = "Выберите групповую программу на уведомления о которой Вы хотите подписаться:"
+        self.notification_disable_str = "Выберите групповую программу от уведомлений которой Вы хотите отписаться:"
         self.contacts_text = get_contacts_text()
         self.cards_text = get_cards_text()
         self.menu_text = get_menu_text()
@@ -175,6 +187,7 @@ class Telegram:
         return request.json()['ok']  # Check API
 
     def get_updates(self):
+
         data = {'offset': self.offset + 1, 'limit': 5, 'timeout': 0}
         if self.proxy:
             request = requests.post(self.URL + self.TOKEN + '/getUpdates', data=data, proxies=self.proxies)
@@ -187,29 +200,31 @@ class Telegram:
             return
         updates_list = []
         for update in request.json()['result']:
+            print update
             #return update['callback_query']['message']['message_id']
 
             self.offset = update['update_id']
+            ans = {}
 
-            if 'message' not in update or 'text' not in update['message']:
-                continue
+            if 'message' in update:
+                ans['message'] = update['message']['text'].encode("utf-8")
+                ans['message_unicode'] = update['message']['text']
+                ans['date'] = update['message']['date']
+                ans['from_id'] = update['message']['chat']['id']  # Chat ID
+                try:
+                    ans['name'] = update['message']['chat']['first_name'].encode("utf-8")
+                except:
+                    ans['name'] = update['message']['from']['first_name'].encode("utf-8")
+
             if 'callback_query' in update:
-                callback_mes_id = update['callback_query']['message']['message_id']
-            from_id = update['message']['chat']['id']  # Chat ID
+                ans['callback_mes_id'] = update['callback_query']['message']['message_id']
+                ans['from_id'] = update['callback_query']['message']['chat']['id']
+                ans['callback_data'] = update['callback_query']['data']
+
             #author_id = update['message']['from']['id']  # Creator ID
-            message = update['message']['text'].encode("utf-8")
-            message_unicode = update['message']['text']
-            date = update['message']['date']
-            try:
-                name = update['message']['chat']['first_name'].encode("utf-8")
-            except:
-                name = update['message']['from']['first_name'].encode("utf-8")
-            parameters = ({'name': name,
-                           'message_unicode': message_unicode,
-                           'from_id': from_id,
-                           'message': message,
-                           'date': date})
-            updates_list.append(parameters)
+
+
+            updates_list.append(ans)
             #log_event('from %s (id%s): "%s" with author: %s; time:%s' % parameters)
         return updates_list
 
@@ -311,6 +326,53 @@ class Telegram:
             log_event("ERROR: " + request.text)
             return False
         return request.json()['ok']  # Check API
+
+
+    def send_notif_able_request(self, chat_id, programs):
+        keyboard = []
+        for program in sorted(list(programs)):
+            keyboard.append([{'text':program, 'callback_data': program}])
+
+        #keyboard = [[{'text': '1', 'callback_data': 'data 1'}, {'text': '2', 'callback_data': 'data 2'}]]
+        json_data = {"chat_id": chat_id, 'text': self.notification_able_str,
+                     "reply_markup": {"inline_keyboard": keyboard, "one_time_keyboard": True, "resize_keyboard": True}}
+        if not self.proxy:  # no proxy
+            request = requests.post(self.URL + self.TOKEN + '/sendMessage', json=json_data)  # HTTP request
+
+        if self.proxy:
+            request = requests.post(self.URL + self.TOKEN + '/sendMessage', json=json_data,
+                                    proxies=self.proxies)  # HTTP request with proxy
+        if not request.status_code == 200:  # Check server status
+            log_event("ERROR: " + request.text)
+            return False
+        return request.json()['ok']  # Check API
+
+    def send_notif_disable_request(self, chat_id, programs):
+        keyboard = []
+        for program in sorted(list(programs)):
+            keyboard.append([{'text':program, 'callback_data': program}])
+
+        #keyboard = [[{'text': '1', 'callback_data': 'data 1'}, {'text': '2', 'callback_data': 'data 2'}]]
+        json_data = {"chat_id": chat_id, 'text': self.notification_disable_str,
+                     "reply_markup": {"inline_keyboard": keyboard, "one_time_keyboard": True, "resize_keyboard": True}}
+        if not self.proxy:  # no proxy
+            request = requests.post(self.URL + self.TOKEN + '/sendMessage', json=json_data)  # HTTP request
+
+        if self.proxy:
+            request = requests.post(self.URL + self.TOKEN + '/sendMessage', json=json_data,
+                                    proxies=self.proxies)  # HTTP request with proxy
+        if not request.status_code == 200:  # Check server status
+            log_event("ERROR: " + request.text)
+            return False
+        return request.json()['ok']  # Check API
+
+    def add_program(self, from_id, data):
+        self.send_text(from_id, " Вы подписаны на {0}".format(data))
+
+    def delete_program(self, from_id, data):
+        self.send_text(from_id, " Вы отписались от {0}".format(data))
+
+
 
 def log_event(text):
     f = open('log.txt', 'a')

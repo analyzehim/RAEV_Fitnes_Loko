@@ -3,6 +3,47 @@ from bot_proto import *
 from db_proto import DB
 
 
+def notif_handler(update, notif_state):
+    if 'message_unicode' in update:
+        message_unicode = update['message_unicode']
+    if 'from_id' in update:
+        from_id = update['from_id']
+
+    if notif_state == 1:
+        if message_unicode == telebot.notif_able:
+            db.set_notification_state(from_id, 2)
+            telebot.send_notif_able_request(from_id, telebot.programs)
+
+        elif message_unicode == telebot.notif_disable:
+            db.set_notification_state(from_id, 3)
+            telebot.send_notif_disable_request(from_id, db.get_programs(from_id))
+
+        else:
+            db.set_notification_state(from_id, 0)
+            telebot.send_menu(from_id)
+
+    elif notif_state == 2:
+        if 'callback_data' in update:
+            data = update['callback_data']
+            db.add_programs(from_id, data)
+            db.set_notification_state(from_id, 0)
+            telebot.add_program(from_id, data)
+            telebot.send_menu(from_id)
+
+    elif notif_state == 3:
+        if 'callback_data' in update:
+            data = update['callback_data']
+            db.delete_programs(from_id, data)
+            db.set_notification_state(from_id, 0)
+            telebot.delete_program(from_id, data)
+            telebot.send_menu(from_id)
+    else:
+        db.set_notification_state(from_id, 0)
+        telebot.send_menu(from_id)
+
+
+
+
 def check_updates():
     parameters_list = telebot.get_updates()
     if not parameters_list:
@@ -12,48 +53,41 @@ def check_updates():
 
 
 def run_command(update):
+    #print update
+    message =''
+    message_unicode =u''
+    from_id = 0
 
     if 'message' in update:
-        cmd = update['message']
+        message = update['message']
     if 'message_unicode' in update:
         message_unicode = update['message_unicode']
     if 'from_id' in update:
         from_id = update['from_id']
-
     notif_state = db.get_notification_state(from_id)
     schedule_state = db.get_schedule_state(from_id)
+    #print from_id, message, notif_state
 
-    if notif_state == 1:
+    if message == '/start':
+        telebot.send_menu(from_id)
+        db.add_default_id(from_id)
 
-        if message_unicode == telebot.notif_able:
-            db.set_notification_state(from_id, 2)
-            telebot.send_notif_able_request(from_id, telebot.subscribes)
+    elif message_unicode == telebot.menu_str:
+        db.add_default_id(from_id)
+        telebot.send_menu(from_id)
 
-        elif message_unicode == telebot.notif_disable:
-            db.set_notification_state(from_id, 3)
-            telebot.send_notif_disable_request(from_id, db.get_subscribe(from_id))
-
-        else:
-            db.set_notification_state(from_id, 0)
-            telebot.send_menu(from_id)
-
+    elif notif_state != 0:
+        notif_handler(update, notif_state)
 
 
     #print message_unicode.encode('raw_unicode_escape')
-
-    if cmd == '/start':
-        telebot.send_menu(from_id)
-        db.add_new_id(from_id)
-
-    elif message_unicode == telebot.menu_str:
-        db.set_default_state()
-        telebot.send_menu(from_id)
-
     elif message_unicode == telebot.cards_str:
         telebot.send_cards(from_id)
+        db.add_default_id(from_id)
 
     elif message_unicode == telebot.contacts_str:
         telebot.send_contacts(from_id)
+        db.add_default_id(from_id)
 
     elif message_unicode == telebot.notification_str:
         telebot.send_notification_request(from_id)
@@ -61,12 +95,18 @@ def run_command(update):
 
     else:
         log_event('No action')
+        db.add_default_id(from_id)
+        telebot.send_menu(from_id)
+    notif_state = db.get_notification_state(from_id)
+    schedule_state = db.get_schedule_state(from_id)
+    #print from_id, message, notif_state
 
 
 if __name__ == "__main__":
 
     telebot = Telegram()
     db = DB()
+    telebot.send_text(telebot.admin_id, "START")
     while True:
         try:
             check_updates()
