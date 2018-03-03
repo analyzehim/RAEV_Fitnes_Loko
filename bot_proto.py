@@ -261,6 +261,7 @@ class Telegram:
 
 
     def send_menu(self, chat_id):
+        log_event("BOT send_menu to {0}".format(chat_id))
         '''
         Send logo at first
         '''
@@ -295,6 +296,7 @@ class Telegram:
         return request.json()['ok']  # Check API
 
     def send_contacts(self, chat_id):
+        log_event("BOT send_contacts to {0}".format(chat_id))
         keyboard = [[self.menu_str]]
         json_data = {'chat_id': chat_id, 'text': self.contacts_text, 'parse_mode': 'HTML',
                      "reply_markup": {"keyboard": keyboard, "one_time_keyboard": True, "resize_keyboard": True}}
@@ -311,6 +313,7 @@ class Telegram:
         return request.json()['ok']  # Check API
 
     def send_cards(self, chat_id):
+        log_event("BOT send_cards to {0}".format(chat_id))
         keyboard = [[self.menu_str]]
         json_data = {'chat_id': chat_id, 'text': self.cards_text, 'parse_mode': 'HTML',
                      "reply_markup": {"keyboard": keyboard, "one_time_keyboard": True, "resize_keyboard": True}}
@@ -328,6 +331,7 @@ class Telegram:
         return request.json()['ok']  # Check API
 
     def send_notification_request(self, chat_id):
+        log_event("BOT send_notification_request to {0}".format(chat_id))
 
         keyboard = [[self.notif_able], [self.notif_disable], [self.menu_str]]
         json_data = {'chat_id': chat_id, 'text': self.notification_req_str, 'parse_mode': 'HTML',
@@ -347,6 +351,7 @@ class Telegram:
 
 
     def send_notif_able_request(self, chat_id, programs):
+        log_event("BOT send_notif_able_request to {0}".format(chat_id))
         keyboard = parse_program(programs)
 
         json_data = {"chat_id": chat_id, 'text': self.notification_able_str,
@@ -363,6 +368,7 @@ class Telegram:
         return request.json()['ok']  # Check API
 
     def send_notif_disable_request(self, chat_id, programs):
+        log_event("BOT send_notif_disable_request to {0}".format(chat_id))
         keyboard = parse_program(programs)
 
         #keyboard = [[{'text': '1', 'callback_data': 'data 1'}, {'text': '2', 'callback_data': 'data 2'}]]
@@ -380,12 +386,15 @@ class Telegram:
         return request.json()['ok']  # Check API
 
     def add_program(self, from_id, data):
+        log_event("BOT add_program to {0}".format(from_id))
         self.send_text(from_id, " Вы подписаны на {0}".format(data))
 
     def delete_program(self, from_id, data):
+        log_event("BOT delete_program to {0}".format(from_id))
         self.send_text(from_id, " Вы отписались от {0}".format(data))
 
     def send_schedule_request(self, chat_id, programs):
+        log_event("BOT send_schedule_request to {0}".format(chat_id))
         keyboard = parse_program(programs)
         #keyboard = [[{'text': '1', 'callback_data': 'data 1'}, {'text': '2', 'callback_data': 'data 2'}]]
         json_data = {"chat_id": chat_id, 'text': self.schedule_request_str,
@@ -402,6 +411,7 @@ class Telegram:
         return request.json()['ok']  # Check API
 
     def send_schedule(self, chat_id, data):
+        log_event("BOT send_schedule to {0}".format(chat_id))
         schedule = self.schedule_dict[data]
         keyboard = [
                     [{'text': self.schedule_req, 'callback_data': self.schedule_req}],

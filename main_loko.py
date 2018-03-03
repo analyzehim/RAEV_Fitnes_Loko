@@ -9,6 +9,7 @@ def schedule_handler(update, schedule_state):
         message_unicode = update['message_unicode']
     if 'from_id' in update:
         from_id = update['from_id']
+
     if schedule_state == 1:
         if 'callback_data' in update:
             data = update['callback_data']
@@ -90,6 +91,10 @@ def run_command(update):
         message_unicode = update['message_unicode']
     if 'from_id' in update:
         from_id = update['from_id']
+        try:
+            log_event("{0} send message '{1}'".format(from_id, message))
+        except:
+            pass
     notif_state = db.get_notification_state(from_id)
     schedule_state = db.get_schedule_state(from_id)
     #print from_id, message, notif_state
