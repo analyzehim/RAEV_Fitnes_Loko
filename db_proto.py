@@ -14,6 +14,7 @@ class DB:
             self.state[id] = {}
         self.state[id]["notification_state"] = 0
         self.state[id]["schedule_state"] = 0
+        self.state[id]["feedback_state"] = 0
         self.dump()
         return 0
 
@@ -46,6 +47,11 @@ class DB:
         self.dump()
         return state
 
+    def set_feedback_state(self, id, state):
+        self.state[id]['feedback_state'] = state
+        self.dump()
+        return state
+
     def get_notification_state(self, id):
         if id not in self.state:
             self.add_default_id(id)
@@ -57,6 +63,12 @@ class DB:
             self.add_default_id(id)
         else:
             return self.state[id]['schedule_state']
+
+    def get_feedback_state(self, id):
+        if id not in self.state:
+            self.add_default_id(id)
+        else:
+            return self.state[id]['feedback_state']
 
     def add_programs(self, id, program):
         if 'programs' not in self.state[id]:

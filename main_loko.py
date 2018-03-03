@@ -3,6 +3,19 @@ from bot_proto import *
 from db_proto import DB
 
 
+
+def feedback_handler(update, feedback_state):
+    if 'message' in update:
+        message = update['message']
+    if 'from_id' in update:
+        from_id = update['from_id']
+
+    if feedback_state == 1:
+        log_event("FEEDBACK: {0}".format(message))
+        telebot.send_feedback_ok(from_id)
+        db.set_feedback_state(from_id, 0)
+
+
 def schedule_handler(update, schedule_state):
 
     if 'message_unicode' in update:
@@ -33,6 +46,7 @@ def schedule_handler(update, schedule_state):
 def notif_handler(update, notif_state):
     if 'message_unicode' in update:
         message_unicode = update['message_unicode']
+
     if 'from_id' in update:
         from_id = update['from_id']
 
@@ -97,7 +111,8 @@ def run_command(update):
             pass
     notif_state = db.get_notification_state(from_id)
     schedule_state = db.get_schedule_state(from_id)
-    #print from_id, message, notif_state
+    feedback_state = db.get_feedback_state(from_id)
+    print from_id, message, feedback_state
 
     if message == '/start':
         telebot.send_menu(from_id)
@@ -112,6 +127,9 @@ def run_command(update):
 
     elif schedule_state != 0:
         schedule_handler(update, schedule_state)
+
+    elif feedback_state != 0:
+        feedback_handler(update, feedback_state)
 
     #print message_unicode.encode('raw_unicode_escape')
     elif message_unicode == telebot.cards_str:
@@ -130,13 +148,18 @@ def run_command(update):
         telebot.send_schedule_request(from_id, telebot.programs)
         db.set_schedule_state(from_id, 1)
 
+    elif message_unicode == telebot.feedback_str:
+        print 1
+        telebot.send_feedback_request(from_id)
+        db.set_feedback_state(from_id, 1)
+
     else:
+        print 2
         log_event('No action')
         db.add_default_id(from_id)
         telebot.send_menu(from_id)
-    notif_state = db.get_notification_state(from_id)
-    schedule_state = db.get_schedule_state(from_id)
-    #print from_id, message, notif_state
+    feedback_state = db.get_feedback_state(from_id)
+    print from_id, message, feedback_state
 
 
 if __name__ == "__main__":

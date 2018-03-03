@@ -146,6 +146,7 @@ class Telegram:
         self.Interval = INTERVAL
         self.programs, self.schedule_dict = get_schedule_dict()
 
+
         self.schedule_str = get_schedule_str()
         self.cards_str = get_cards_str()
         self.notification_str = get_notification_str()
@@ -157,6 +158,8 @@ class Telegram:
         self.notification_disable_str = "Выберите групповую программу от уведомлений которой Вы хотите отписаться:"
         self.schedule_request_str = "Выберите групповую программу, расписание которой вы хотите посмотреть:"
         self.schedule_req = "Посмотреть другие расписания"
+        self.feedback_request = "Отправьте нам соощение с отзывом!"
+        self.feedback_ok = "Спасибо за отзыв!"
         self.contacts_text = get_contacts_text()
         self.cards_text = get_cards_text()
         self.menu_text = get_menu_text()
@@ -431,6 +434,46 @@ class Telegram:
             log_event("ERROR: " + request.text)
             return False
         return request.json()['ok']  # Check API
+
+    def send_feedback_request(self, chat_id):
+        log_event("BOT send_feedback_request to {0}".format(chat_id))
+        keyboard = [[self.menu_str]]
+        json_data = {'chat_id': chat_id, 'text': self.feedback_request, 'parse_mode': 'HTML',
+                     "reply_markup": {"keyboard": keyboard, "one_time_keyboard": True, "resize_keyboard": True}}
+        if not self.proxy:  # no proxy
+            request = requests.post(self.URL + self.TOKEN + '/sendMessage', json=json_data)  # HTTP request
+
+        if self.proxy:
+            request = requests.post(self.URL + self.TOKEN + '/sendMessage', json=json_data,
+                                    proxies=self.proxies)  # HTTP request with proxy
+
+        # print request.json()
+        if not request.status_code == 200:  # Check server status
+            log_event("ERROR: " + request.text)
+            return False
+        return request.json()['ok']  # Check API
+
+    def send_feedback_ok(self, chat_id):
+        log_event("BOT send_feedback_ok to {0}".format(chat_id))
+        json_data = {'chat_id': chat_id, 'text': self.feedback_ok, 'parse_mode': 'HTML'}
+        if not self.proxy:  # no proxy
+            request = requests.post(self.URL + self.TOKEN + '/sendMessage', json=json_data)  # HTTP request
+
+        if self.proxy:
+            request = requests.post(self.URL + self.TOKEN + '/sendMessage', json=json_data,
+                                    proxies=self.proxies)  # HTTP request with proxy
+        if not request.status_code == 200:  # Check server status
+            log_event("ERROR: " + request.text)
+            return False
+
+        self.send_menu(chat_id)
+
+        if not request.status_code == 200:  # Check server status
+            log_event("ERROR: " + request.text)
+            return False
+        return request.json()['ok']  # Check API
+
+
 
 
 def log_event(text):
